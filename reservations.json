@@ -1,0 +1,15 @@
+[
+  {
+    "firstName": "Test",
+    "lastName": "Customer",
+    "email": "test@example.com",
+    "phone": "1234567890",
+    "date": "2025-07-15",
+    "time": "19:00",
+    "guests": "2",
+    "occasion": "birthday",
+    "requests": "Window seat please",
+    "submittedAt": "2025-07-12T06:21:16.863Z",
+    "id": "1752301276869"
+  }
+]

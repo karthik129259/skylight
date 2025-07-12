@@ -1,0 +1,16 @@
+/* SIMPLE TEST CSS */
+body {
+  background: red !important;
+  color: white !important;
+  font-size: 24px !important;
+}
+
+#root {
+  background: blue !important;
+  padding: 50px !important;
+  color: yellow !important;
+}
+
+h1, h2, h3 {
+  color: lime !important;
+}

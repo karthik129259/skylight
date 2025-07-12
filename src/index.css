@@ -1,0 +1,9 @@
+/* Minimal reset for Vite */
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Let App.css handle all the styling */
