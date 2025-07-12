@@ -2,14 +2,155 @@ import { useState, useEffect } from 'react'
 import emailjs from '@emailjs/browser'
 import './App.css'
 
+// Reservation Manager Component
+function ReservationManager({ onConfirm, onReject }) {
+  const [reservations, setReservations] = useState([])
+
+  useEffect(() => {
+    loadReservations()
+  }, [])
+
+  const loadReservations = () => {
+    const stored = JSON.parse(localStorage.getItem('reservations') || '[]')
+    setReservations(stored)
+  }
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'pending': return '#f39c12'
+      case 'confirmed': return '#27ae60'
+      case 'rejected': return '#e74c3c'
+      default: return '#95a5a6'
+    }
+  }
+
+  const getStatusIcon = (status) => {
+    switch(status) {
+      case 'pending': return '⏳'
+      case 'confirmed': return '✅'
+      case 'rejected': return '❌'
+      default: return '❓'
+    }
+  }
+
+  const handleConfirm = (id) => {
+    onConfirm(id)
+    setTimeout(loadReservations, 100) // Reload after state change
+  }
+
+  const handleReject = (id) => {
+    onReject(id)
+    setTimeout(loadReservations, 100) // Reload after state change
+  }
+
+  return (
+    <div style={{ padding: '20px' }}>
+      <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+        <p>Total Reservations: <strong>{reservations.length}</strong></p>
+        <p>
+          Pending: <span style={{color: '#f39c12'}}>{reservations.filter(r => r.status === 'pending').length}</span> | 
+          Confirmed: <span style={{color: '#27ae60'}}>{reservations.filter(r => r.status === 'confirmed').length}</span> | 
+          Rejected: <span style={{color: '#e74c3c'}}>{reservations.filter(r => r.status === 'rejected').length}</span>
+        </p>
+      </div>
+
+      <div style={{ maxHeight: '500px', overflow: 'auto' }}>
+        {reservations.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#666' }}>No reservations yet.</p>
+        ) : (
+          reservations.map((reservation) => (
+            <div key={reservation.id} style={{
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              padding: '15px',
+              marginBottom: '15px',
+              backgroundColor: '#f9f9f9'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <h4 style={{ margin: 0, color: '#2c3e50' }}>
+                  {reservation.firstName} {reservation.lastName}
+                </h4>
+                <div style={{
+                  padding: '5px 10px',
+                  borderRadius: '15px',
+                  backgroundColor: getStatusColor(reservation.status),
+                  color: 'white',
+                  fontSize: '12px',
+                  fontWeight: 'bold'
+                }}>
+                  {getStatusIcon(reservation.status)} {reservation.status.toUpperCase()}
+                </div>
+              </div>
+
+              <div style={{ fontSize: '14px', marginBottom: '10px' }}>
+                <p><strong>📧 Email:</strong> {reservation.email}</p>
+                <p><strong>📞 Phone:</strong> {reservation.phone}</p>
+                <p><strong>📅 Date:</strong> {reservation.date}</p>
+                <p><strong>🕒 Time:</strong> {reservation.time}</p>
+                <p><strong>👥 Guests:</strong> {reservation.guests}</p>
+                <p><strong>🎉 Occasion:</strong> {reservation.occasion || 'None'}</p>
+                <p><strong>📝 Requests:</strong> {reservation.requests || 'None'}</p>
+                <p><strong>⏰ Submitted:</strong> {new Date(reservation.submittedAt).toLocaleString()}</p>
+              </div>
+
+              {reservation.status === 'pending' && (
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => handleConfirm(reservation.id)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#27ae60',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ✅ Confirm
+                  </button>
+                  <button
+                    onClick={() => handleReject(reservation.id)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#e74c3c',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '5px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ❌ Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [isVisible, setIsVisible] = useState(false)
   const [activeSection, setActiveSection] = useState('home')
   const [showReservationPopup, setShowReservationPopup] = useState(false)
+  const [showAdminPanel, setShowAdminPanel] = useState(false)
 
   useEffect(() => {
     setIsVisible(true)
-  }, [])
+    
+    // Add keyboard shortcut for admin panel (Ctrl+Shift+A)
+    const handleKeyDown = (event) => {
+      if (event.ctrlKey && event.shiftKey && event.key === 'A') {
+        event.preventDefault()
+        setShowAdminPanel(!showAdminPanel)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showAdminPanel])
 
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId)
@@ -29,12 +170,17 @@ function App() {
     document.body.style.overflow = 'auto'
   }
 
+  const toggleAdminPanel = () => {
+    setShowAdminPanel(!showAdminPanel)
+  }
+
   const handleReservationSubmit = async (e) => {
     e.preventDefault()
     
     // Collect form data
     const formData = new FormData(e.target)
     const reservationData = {
+      id: Date.now().toString(),
       firstName: formData.get('firstName'),
       lastName: formData.get('lastName'),
       email: formData.get('email'),
@@ -44,7 +190,8 @@ function App() {
       guests: formData.get('guests'),
       occasion: formData.get('occasion'),
       requests: formData.get('requests'),
-      submittedAt: new Date().toISOString()
+      submittedAt: new Date().toISOString(),
+      status: 'pending' // Initial status is pending
     }
 
     console.log('Reservation Data:', reservationData)
@@ -55,7 +202,7 @@ function App() {
     // Store locally as backup
     storeReservationLocally(reservationData)
 
-    alert(`Thank you ${reservationData.firstName}! Your reservation request for ${reservationData.guests} guests on ${reservationData.date} at ${reservationData.time} has been submitted. We will contact you at ${reservationData.email} or ${reservationData.phone} soon.`)
+    alert(`Thank you ${reservationData.firstName}! Your reservation request for ${reservationData.guests} guests on ${reservationData.date} at ${reservationData.time} has been submitted and is PENDING confirmation. We will contact you at ${reservationData.email} or ${reservationData.phone} within 24 hours to confirm.`)
     closeReservationPopup()
   }
 
@@ -104,6 +251,65 @@ function App() {
     existingReservations.push(data)
     localStorage.setItem('reservations', JSON.stringify(existingReservations))
     console.log('Reservation stored locally. Check localStorage for data.')
+  }
+
+  // Confirm reservation function
+  const confirmReservation = async (reservationId) => {
+    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]')
+    const reservationIndex = reservations.findIndex(r => r.id === reservationId)
+    
+    if (reservationIndex !== -1) {
+      reservations[reservationIndex].status = 'confirmed'
+      reservations[reservationIndex].confirmedAt = new Date().toISOString()
+      localStorage.setItem('reservations', JSON.stringify(reservations))
+      
+      // Send confirmation email to customer
+      await sendConfirmationEmail(reservations[reservationIndex], 'confirmed')
+      alert('Reservation confirmed! Customer has been notified.')
+    }
+  }
+
+  // Reject reservation function
+  const rejectReservation = async (reservationId) => {
+    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]')
+    const reservationIndex = reservations.findIndex(r => r.id === reservationId)
+    
+    if (reservationIndex !== -1) {
+      reservations[reservationIndex].status = 'rejected'
+      reservations[reservationIndex].rejectedAt = new Date().toISOString()
+      localStorage.setItem('reservations', JSON.stringify(reservations))
+      
+      // Send rejection email to customer
+      await sendConfirmationEmail(reservations[reservationIndex], 'rejected')
+      alert('Reservation rejected. Customer has been notified.')
+    }
+  }
+
+  // Send confirmation/rejection email to customer
+  const sendConfirmationEmail = async (reservation, status) => {
+    try {
+      const serviceId = 'service_rm9kpgq'
+      const templateId = 'template_x87ys11' // You'll need a second template for customer notifications
+      const publicKey = 'eYYR8ByzKKro9TUAl'
+      
+      const emailData = {
+        to_email: reservation.email, // Send to customer
+        customer_name: `${reservation.firstName} ${reservation.lastName}`,
+        reservation_status: status,
+        reservation_date: reservation.date,
+        reservation_time: reservation.time,
+        number_of_guests: reservation.guests,
+        restaurant_phone: '098989 22501',
+        status_message: status === 'confirmed' 
+          ? 'Your reservation has been CONFIRMED! We look forward to serving you.'
+          : 'Unfortunately, we cannot accommodate your reservation at this time. Please call us to discuss alternative options.'
+      }
+
+      await emailjs.send(serviceId, templateId, emailData, publicKey)
+      console.log(`${status} email sent to customer`)
+    } catch (error) {
+      console.error('Failed to send confirmation email:', error)
+    }
   }
 
   return (
@@ -392,6 +598,30 @@ function App() {
             </button>
           </form>
         </div>
+      </div>
+
+      {/* Admin Panel for Managing Reservations */}
+      <div className={`popup-overlay ${showAdminPanel ? 'active' : ''}`} onClick={toggleAdminPanel}>
+        <div className="popup-content" onClick={(e) => e.stopPropagation()} style={{maxWidth: '900px', height: '80vh', overflow: 'auto'}}>
+          <button className="popup-close" onClick={toggleAdminPanel}>×</button>
+          <h2 className="popup-title">🍽️ Reservation Management</h2>
+          <ReservationManager onConfirm={confirmReservation} onReject={rejectReservation} />
+        </div>
+      </div>
+
+      {/* Admin Access Button (Hidden - Access via keyboard shortcut) */}
+      <div 
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          opacity: 0.1,
+          cursor: 'pointer'
+        }}
+        onClick={toggleAdminPanel}
+        title="Admin Panel (Ctrl+Shift+A)"
+      >
+        ⚙️
       </div>
     </div>
   )
