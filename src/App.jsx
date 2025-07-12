@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
+import emailjs from '@emailjs/browser'
 import './App.css'
-import ReservationAdmin from './ReservationAdmin'
 
 function App() {
   const [isVisible, setIsVisible] = useState(false)
@@ -49,76 +49,56 @@ function App() {
 
     console.log('Reservation Data:', reservationData)
 
-    // Send to your Node.js backend with Gmail
-    await sendToBackend(reservationData)
+    // Use EmailJS for Netlify deployment (works on static hosting)
+    await sendEmailNotification(reservationData)
 
-    // Also store locally as backup
+    // Store locally as backup
     storeReservationLocally(reservationData)
 
     alert(`Thank you ${reservationData.firstName}! Your reservation request for ${reservationData.guests} guests on ${reservationData.date} at ${reservationData.time} has been submitted. We will contact you at ${reservationData.email} or ${reservationData.phone} soon.`)
     closeReservationPopup()
   }
 
-  // Option 1: EmailJS Integration (Free email service)
-  const sendEmailNotification = (data) => {
-    // You'll need to sign up at emailjs.com and get your service ID, template ID, and user ID
-    const emailData = {
-      to_email: 'your-restaurant-email@gmail.com', // Your restaurant email
-      customer_name: `${data.firstName} ${data.lastName}`,
-      customer_email: data.email,
-      customer_phone: data.phone,
-      reservation_date: data.date,
-      reservation_time: data.time,
-      number_of_guests: data.guests,
-      special_occasion: data.occasion || 'None',
-      special_requests: data.requests || 'None',
-      submitted_at: new Date(data.submittedAt).toLocaleString()
-    }
-
-    // Uncomment this when you set up EmailJS
-    /*
-    emailjs.send(
-      'your_service_id',
-      'your_template_id', 
-      emailData,
-      'your_user_id'
-    ).then((response) => {
-      console.log('Email sent successfully!', response)
-    }).catch((error) => {
-      console.error('Email failed to send:', error)
-    })
-    */
-
-    console.log('Email would be sent with:', emailData)
-  }
-
-  // Option 2: Send to Backend API
-  const sendToBackend = async (data) => {
+  // EmailJS Integration for Netlify (Free email service)
+  const sendEmailNotification = async (data) => {
     try {
-      const response = await fetch('/api/reservations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-      })
+      // EmailJS configuration - You need to set these up at emailjs.com
+      const serviceId = 'service_rm9kpgq'  // Your EmailJS service ID
+      const templateId = 'template_x87ys11' // Your EmailJS template ID
+      const publicKey = 'eYYR8ByzKKro9TUAl' // Your EmailJS public key
       
-      const result = await response.json()
-      
-      if (response.ok) {
-        console.log('Reservation sent to backend successfully:', result)
-        alert(`Reservation confirmed! Confirmation ID: ${result.reservationId}. You will receive an email shortly.`)
-      } else {
-        console.error('Backend error:', result.error)
-        alert('There was an issue processing your reservation. Please try again or call us directly.')
+      const emailData = {
+        to_email: 'karthik.idikuda129259@marwadiuniversity.ac.in',
+        customer_name: `${data.firstName} ${data.lastName}`,
+        customer_email: data.email,
+        customer_phone: data.phone,
+        reservation_date: data.date,
+        reservation_time: data.time,
+        number_of_guests: data.guests,
+        special_occasion: data.occasion || 'None',
+        special_requests: data.requests || 'None',
+        submitted_at: new Date(data.submittedAt).toLocaleString()
       }
+
+      // Send email using EmailJS
+      const response = await emailjs.send(
+        serviceId,
+        templateId,
+        emailData,
+        publicKey
+      )
+      
+      console.log('Email sent successfully!', response)
+      return response
     } catch (error) {
-      console.error('Failed to send to backend:', error)
-      alert('Unable to connect to reservation system. Please call us directly at 098989 22501.')
+      console.error('Email failed to send:', error)
+      // Fallback: show instructions to call directly
+      alert('Reservation saved locally! Please call us at 098989 22501 to confirm your booking.')
+      throw error
     }
   }
 
-  // Option 3: Store locally and email manually
+  // Store reservations locally as backup
   const storeReservationLocally = (data) => {
     const existingReservations = JSON.parse(localStorage.getItem('reservations') || '[]')
     existingReservations.push(data)
@@ -413,9 +393,6 @@ function App() {
           </form>
         </div>
       </div>
-
-      {/* Admin Panel */}
-      <ReservationAdmin />
     </div>
   )
 }
